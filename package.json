@@ -1,0 +1,57 @@
+{
+  "name": "wertbot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WertBot — AI-powered financial co-pilot. Personal Finance, AI Advisory, Neobanking.",
+  "workspaces": [
+    "apps/web",
+    "apps/backend/api-gateway",
+    "apps/backend/pfm-service",
+    "apps/backend/ai-service",
+    "apps/backend/trading-service",
+    "apps/backend/banking-service",
+    "libs/shared-types",
+    "libs/proto"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:gateway": "npm run dev --workspace=apps/backend/api-gateway",
+    "dev:pfm": "npm run dev --workspace=apps/backend/pfm-service",
+    "dev:ai": "npm run dev --workspace=apps/backend/ai-service",
+    "dev:trading": "npm run dev --workspace=apps/backend/trading-service",
+    "dev:banking": "npm run dev --workspace=apps/backend/banking-service",
+    "dev:backend": "concurrently \"npm run dev:gateway\" \"npm run dev:pfm\" \"npm run dev:ai\"",
+    "docker:up": "docker-compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f infra/docker/docker-compose.yml down",
+    "docker:logs": "docker-compose -f infra/docker/docker-compose.yml logs -f",
+    "db:migrate": "node database/scripts/migrate.js",
+    "db:seed": "node database/scripts/seed.js",
+    "db:reset": "npm run docker:down && npm run docker:up && sleep 5 && npm run db:migrate && npm run db:seed",
+    "build:all": "npm run build --workspaces",
+    "start:all": "node scripts/start-all-services.js",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "proto:gen": "node scripts/proto-gen.js"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.5.4",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.9.1",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.2.4",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.22",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.4",
+    "lodash": "^4.18.1",
+    "typeorm": "^0.3.31",
+    "victory-vendor": "^37.3.6"
+  }
+}

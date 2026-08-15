@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package wertbot.transaction;
+
+option java_package = "ai.wertbot.transaction";
+
+// =============================================================================
+// WertBot — Transaction & PFM gRPC Service Definition
+// =============================================================================
+
+service TransactionService {
+  rpc GetTransaction        (GetTransactionRequest)        returns (TransactionResponse);
+  rpc ListTransactions      (ListTransactionsRequest)      returns (ListTransactionsResponse);
+  rpc CreateTransaction     (CreateTransactionRequest)     returns (TransactionResponse);
+  rpc UpdateTransactionStatus (UpdateStatusRequest)        returns (TransactionResponse);
+  rpc GetBudgetStatus       (GetBudgetStatusRequest)       returns (BudgetStatusResponse);
+  rpc GetCardRecommendation (CardRecommendationRequest)    returns (CardRecommendationResponse);
+}
+
+message TransactionResponse {
+  string transaction_id  = 1;
+  string user_id         = 2;
+  string account_id      = 3;
+  string type            = 4;
+  string status          = 5;
+  int64  amount_minor    = 6;
+  string currency        = 7;
+  string merchant_name   = 8;
+  string merchant_mcc    = 9;
+  string category        = 10;
+  string source          = 11;
+  int64  transaction_date = 12;
+  int64  created_at      = 13;
+}
+
+message GetTransactionRequest {
+  string transaction_id = 1;
+  string user_id        = 2;
+}
+
+message CreateTransactionRequest {
+  string user_id         = 1;
+  string account_id      = 2;
+  string type            = 3;
+  int64  amount_minor    = 4;
+  string currency        = 5;
+  string merchant_name   = 6;
+  string merchant_mcc    = 7;
+  string source          = 8;
+  int64  transaction_date = 9;
+}
+
+message ListTransactionsRequest {
+  string user_id     = 1;
+  string account_id  = 2;
+  int32  page        = 3;
+  int32  limit       = 4;
+  string sort_by     = 5;
+  int64  from_date   = 6;
+  int64  to_date     = 7;
+  string category    = 8;
+}
+
+message ListTransactionsResponse {
+  repeated TransactionResponse transactions = 1;
+  int32 total    = 2;
+  bool  has_next = 3;
+}
+
+message UpdateStatusRequest {
+  string transaction_id = 1;
+  string new_status     = 2;
+}
+
+message GetBudgetStatusRequest {
+  string user_id   = 1;
+  string category  = 2;
+  string period    = 3;
+}
+
+message BudgetStatusResponse {
+  string category          = 1;
+  int64  limit_minor       = 2;
+  int64  spent_minor       = 3;
+  double spent_percent     = 4;
+  bool   is_over_budget    = 5;
+  bool   alert_triggered   = 6;
+  string ai_suggestion     = 7;
+}
+
+message CardRecommendationRequest {
+  string user_id       = 1;
+  string merchant_mcc  = 2;
+  int64  amount_minor  = 3;
+  string currency      = 4;
+}
+
+message CardRecommendationResponse {
+  string card_id          = 1;
+  string card_name        = 2;
+  string issuer           = 3;
+  double reward_rate      = 4;
+  string reward_type      = 5;
+  string reward_program   = 6;
+  double estimated_reward = 7;
+  string reasoning        = 8;
+}

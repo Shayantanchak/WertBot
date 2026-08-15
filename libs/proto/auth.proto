@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package wertbot.auth;
+
+option java_package = "ai.wertbot.auth";
+
+// =============================================================================
+// WertBot — Auth gRPC Service Definition
+// Used by: API Gateway (server), all other microservices (client)
+// =============================================================================
+
+service AuthService {
+  rpc ValidateToken  (ValidateTokenRequest)  returns (ValidateTokenResponse);
+  rpc RefreshToken   (RefreshTokenRequest)   returns (RefreshTokenResponse);
+  rpc GetUser        (GetUserRequest)        returns (UserResponse);
+  rpc RevokeSession  (RevokeSessionRequest)  returns (RevokeSessionResponse);
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool   is_valid  = 1;
+  string user_id   = 2;
+  string email     = 3;
+  string role      = 4;
+  int64  expires_at = 5;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+  string device_id     = 2;
+}
+
+message RefreshTokenResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+  int64  expires_in    = 3;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message UserResponse {
+  string user_id          = 1;
+  string email            = 2;
+  string full_name        = 3;
+  string role             = 4;
+  bool   is_mfa_enabled   = 5;
+  bool   is_email_verified = 6;
+  int64  created_at       = 7;
+}
+
+message RevokeSessionRequest {
+  string user_id       = 1;
+  string refresh_token = 2;
+  bool   revoke_all    = 3;
+}
+
+message RevokeSessionResponse {
+  bool   success = 1;
+  string message = 2;
+}

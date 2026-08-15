@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-service
+  namespace: wertbot
+  labels:
+    app: trading-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trading-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: trading-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3003"
+    spec:
+      containers:
+        - name: trading-service
+          image: wertbot/trading-service:latest
+          ports:
+            - containerPort: 3003
+              name: http
+            - containerPort: 3013
+              name: ws
+          envFrom:
+            - secretRef:
+                name: wertbot-secrets
+            - configMapRef:
+                name: wertbot-config
+          resources:
+            requests:
+              cpu: "500m"       # HFT needs dedicated CPU
+              memory: "512Mi"
+            limits:
+              cpu: "4000m"      # Allow up to 4 CPU cores for analysis workers
+              memory: "2Gi"
+          # CPU pinning hint for low-latency (requires QoS Guaranteed class)
+          # requestsCPU = limitsCPU above satisfies this
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3003
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3003
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+      # Node affinity: prefer nodes with high-CPU profile for HFT
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node.kubernetes.io/instance-type
+                    operator: In
+                    values: [c5.2xlarge, c5.4xlarge, c6i.2xlarge]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-service
+  namespace: wertbot
+spec:
+  selector:
+    app: trading-service
+  ports:
+    - name: http
+      port: 3003
+      targetPort: 3003
+    - name: ws
+      port: 3013
+      targetPort: 3013
+  type: ClusterIP

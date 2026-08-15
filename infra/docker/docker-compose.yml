@@ -1,0 +1,127 @@
+version: '3.9'
+
+# =============================================================================
+# WertBot — Local Development Infrastructure
+# Services: PostgreSQL 16, Redis 7, Kafka + Zookeeper, Kafka UI, pgAdmin
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: wertbot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       wertbot
+      POSTGRES_USER:     wertbot_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wertbot_dev_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - wertbot_postgres_data:/var/lib/postgresql/data
+      - ../../database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wertbot_user -d wertbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [wertbot-network]
+
+  # ── Redis 7 ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: wertbot-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-wertbot_redis_secret}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - wertbot_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-wertbot_redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [wertbot-network]
+
+  # ── Zookeeper (Kafka dependency) ────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    container_name: wertbot-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - wertbot_zookeeper_data:/var/lib/zookeeper/data
+      - wertbot_zookeeper_log:/var/lib/zookeeper/log
+    networks: [wertbot-network]
+
+  # ── Apache Kafka ────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: wertbot-kafka
+    restart: unless-stopped
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+    ports:
+      - "29092:29092"
+    volumes:
+      - wertbot_kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks: [wertbot-network]
+
+  # ── Kafka UI ────────────────────────────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: wertbot-kafka-ui
+    restart: unless-stopped
+    depends_on: [kafka]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: wertbot-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "8080:8080"
+    networks: [wertbot-network]
+
+  # ── pgAdmin 4 ───────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wertbot-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:    admin@wertbot.ai
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on: [postgres]
+    networks: [wertbot-network]
+
+volumes:
+  wertbot_postgres_data:
+  wertbot_redis_data:
+  wertbot_zookeeper_data:
+  wertbot_zookeeper_log:
+  wertbot_kafka_data:
+
+networks:
+  wertbot-network:
+    driver: bridge

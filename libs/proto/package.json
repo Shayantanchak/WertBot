@@ -1,0 +1,9 @@
+{
+  "name": "@wertbot/proto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WertBot gRPC protocol buffer files",
+  "scripts": {
+    "build": "echo \"No build required for proto files\""
+  }
+}
